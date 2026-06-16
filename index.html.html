@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Monitoring – IDN Sentul</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0f4ee; --card: #ffffff;
+    --green-dark: #2d6a4f; --green-mid: #52b788; --green-light: #b7e4c7; --green-pale: #d8f3dc;
+    --accent-gold: #e9c46a; --accent-red: #e76f51; --accent-blue: #457b9d; --accent-teal: #2a9d8f;
+    --text-dark: #1b2b1e; --text-mid: #4a6741; --text-light: #8aab85;
+    --shadow: 0 2px 16px rgba(45,106,79,0.10); --radius: 16px;
+    --sidebar-w: 200px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text-dark); min-height: 100vh; display: flex; flex-direction: column; }
+
+  .tooltip { position: fixed; background: #1b2b1e; color: #fff; padding: 7px 12px; border-radius: 8px; font-size: 12px; font-family: 'DM Mono', monospace; font-weight: 500; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 9999; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
+  .tooltip.visible { opacity: 1; }
+
+  /* HEADER */
+  .header { background: var(--green-dark); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; position: sticky; top: 0; z-index: 100; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-icon { width: 42px; height: 42px; border-radius: 11px; background: var(--green-mid); display: flex; align-items: center; justify-content: center; font-size: 19px; }
+  .header-title { color: #fff; }
+  .header-title h1 { font-size: 17px; font-weight: 800; letter-spacing: -0.5px; }
+  .header-title p { font-size: 11px; color: var(--green-light); margin-top: 2px; }
+  .header-stats { display: flex; gap: 10px; }
+  .stat-badge { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 11px; padding: 7px 14px; text-align: center; color: #fff; }
+  .stat-badge .val { font-size: 19px; font-weight: 800; font-family: 'DM Mono', monospace; color: var(--accent-gold); }
+  .stat-badge .lbl { font-size: 10px; color: var(--green-light); margin-top: 2px; }
+  .stat-badge.positive .val { color: #6fcf97; }
+
+  .body-wrap { display: flex; flex: 1; }
+
+  /* SIDEBAR */
+  .sidebar { width: var(--sidebar-w); background: var(--green-dark); display: flex; flex-direction: column; padding: 20px 0; min-height: calc(100vh - 70px); position: sticky; top: 70px; align-self: flex-start; height: calc(100vh - 70px); }
+  .sidebar-section { padding: 0 14px; margin-bottom: 6px; }
+  .sidebar-section-label { font-size: 9px; font-weight: 700; color: var(--green-light); text-transform: uppercase; letter-spacing: 1px; padding: 0 8px; margin-bottom: 8px; }
+  .nav-item { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border-radius: 10px; cursor: pointer; color: var(--green-light); font-size: 13px; font-weight: 600; transition: background 0.15s, color 0.15s; margin-bottom: 2px; }
+  .nav-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+  .nav-item.active { background: var(--green-mid); color: #fff; }
+  .nav-item .nav-icon { font-size: 15px; flex-shrink: 0; }
+
+  .content { flex: 1; overflow-y: auto; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* SKL PAGE */
+  .main { padding: 20px 22px; display: grid; grid-template-columns: 1fr 310px; gap: 16px; }
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
+  .card-title { font-size: 12px; font-weight: 700; color: var(--green-dark); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 13px; }
+  .subject-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 11px; margin-bottom: 16px; }
+  .subject-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; display: flex; align-items: center; gap: 11px; cursor: default; transition: box-shadow 0.2s, transform 0.2s; }
+  .subject-card:hover { box-shadow: 0 6px 24px rgba(45,106,79,0.18); transform: translateY(-2px); }
+  .subject-icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .subject-icon.it { background: #e0e7ff; } .subject-icon.en { background: #d1fae5; } .subject-icon.din { background: #fff3e0; }
+  .subject-info h3 { font-size: 12px; color: var(--text-mid); font-weight: 600; }
+  .subject-info .pct { font-size: 24px; font-weight: 800; color: var(--green-dark); font-family: 'DM Mono', monospace; line-height: 1.1; }
+  .subject-info .sub-detail { font-size: 10px; color: var(--text-light); margin-top: 1px; }
+  .subject-bar { height: 4px; background: var(--green-pale); border-radius: 99px; margin-top: 7px; overflow:hidden; }
+  .subject-bar-fill { height: 100%; border-radius: 99px; }
+  .bar-chart { display: flex; flex-direction: column; gap: 8px; }
+  .bar-row { display: flex; align-items: center; gap: 9px; }
+  .bar-label { font-size: 12px; font-weight: 600; color: var(--text-mid); width: 28px; text-align: right; flex-shrink:0; }
+  .bar-track { flex: 1; height: 24px; background: var(--green-pale); border-radius: 6px; overflow:hidden; cursor: pointer; }
+  .bar-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--green-mid), var(--green-dark)); display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; transition: filter 0.2s; }
+  .bar-track:hover .bar-fill { filter: brightness(1.1); }
+  .bar-fill span { font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 500; color: #fff; }
+  .grade-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 11px; margin-top: 16px; }
+  .grade-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 13px; }
+  .grade-card h4 { font-size: 12px; font-weight: 700; color: var(--green-dark); margin-bottom: 3px; }
+  .grade-meta { font-size: 10px; color: var(--text-light); margin-bottom: 10px; }
+  .grade-subject { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+  .grade-subject .sname { font-size: 11px; color: var(--text-mid); font-weight: 600; }
+  .grade-subject .sproj { font-size: 10px; color: var(--text-light); }
+  .grade-subject .spct { font-size: 13px; font-weight: 800; font-family: 'DM Mono', monospace; }
+  .grade-subject .spct.it { color: var(--accent-blue); } .grade-subject .spct.en { color: var(--green-mid); } .grade-subject .spct.din { color: var(--accent-gold); }
+  .mini-bar { height: 4px; background: var(--green-pale); border-radius: 99px; overflow:hidden; margin-bottom: 8px; cursor: pointer; }
+  .mini-bar-fill { height: 100%; border-radius: 99px; }
+  .mini-bar:hover .mini-bar-fill { filter: brightness(1.1); }
+  .mini-chart { margin-top: 10px; }
+  .mini-chart-bars { display: flex; align-items: flex-end; gap: 5px; height: 52px; }
+  .mini-bar-v { flex: 1; border-radius: 4px 4px 0 0; min-width: 12px; cursor: pointer; transition: filter 0.15s, transform 0.15s; }
+  .mini-bar-v:hover { filter: brightness(1.15); transform: scaleY(1.04); transform-origin: bottom; }
+  .mini-chart-labels { display: flex; gap: 5px; margin-top: 3px; }
+  .mini-chart-labels span { flex: 1; font-size: 9px; color: var(--text-light); text-align: center; }
+  .right-col { display: flex; flex-direction: column; gap: 13px; }
+  .fastest-list { display: flex; flex-direction: column; gap: 5px; }
+  .fastest-item { display: flex; align-items: center; gap: 9px; padding: 5px 7px; border-radius: 8px; cursor: default; transition: background 0.15s; }
+  .fastest-item:hover { background: var(--green-pale); }
+  .fastest-rank { width: 20px; height: 20px; border-radius: 50%; background: var(--green-pale); color: var(--green-dark); font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .fastest-rank.top { background: var(--accent-gold); color: #7a5c00; }
+  .fastest-info { flex: 1; }
+  .fastest-name { font-size: 11px; font-weight: 600; color: var(--text-dark); }
+  .fastest-class { font-size: 10px; color: var(--text-light); }
+  .fastest-pct { font-size: 11px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--green-dark); }
+  .fastest-bar { height: 3px; background: var(--green-pale); border-radius: 99px; overflow:hidden; margin-top: 3px; }
+  .fastest-bar-fill { height: 100%; border-radius: 99px; background: var(--green-mid); }
+  .material-list { display: flex; flex-direction: column; gap: 6px; }
+  .mat-item { display: flex; align-items: center; gap: 7px; }
+  .mat-label { font-size: 11px; font-weight: 700; width: 44px; flex-shrink:0; }
+  .mat-label.it { color: var(--accent-blue); } .mat-label.en { color: var(--green-mid); } .mat-label.din { color: var(--accent-gold); }
+  .mat-track { flex: 1; height: 16px; background: var(--green-pale); border-radius: 4px; overflow:hidden; cursor: pointer; }
+  .mat-track:hover .mat-fill { filter: brightness(1.12); }
+  .mat-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; transition: filter 0.15s; }
+  .mat-fill span { font-size: 10px; font-family: 'DM Mono', monospace; color: #fff; font-weight: 500; }
+  .legend { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 9px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-mid); }
+  .legend-dot { width: 9px; height: 9px; border-radius: 3px; }
+  .total-card { background: var(--green-dark); border-radius: var(--radius); padding: 16px; color: #fff; display: flex; flex-direction: column; gap: 7px; }
+  .total-card h4 { font-size: 11px; font-weight: 700; color: var(--green-light); text-transform: uppercase; letter-spacing: 0.5px; }
+  .total-main { font-size: 32px; font-weight: 800; font-family: 'DM Mono', monospace; color: var(--accent-gold); line-height: 1; }
+  .total-sub { font-size: 11px; color: var(--green-light); }
+  .total-breakdown { display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; margin-top: 5px; }
+  .total-breakdown-item { background: rgba(255,255,255,0.1); border-radius: 7px; padding: 6px; text-align: center; }
+  .total-breakdown-item .tb-val { font-size: 13px; font-weight: 800; font-family: 'DM Mono', monospace; }
+  .total-breakdown-item .tb-lbl { font-size: 9px; color: var(--green-light); margin-top: 1px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .section-gap { margin-top: 16px; }
+
+  /* ══ TAHFIDZ PAGE ══ */
+  .tfz-page { padding: 20px 22px; }
+
+  /* stat row */
+  .tfz-stat-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 18px; }
+  .tfz-stat { background: #0f2744; border: 1px solid #1e4a7a; border-radius: 14px; padding: 14px 12px; text-align: center; color: #fff; }
+  .tfz-stat .ts-label { font-size: 10px; font-weight: 700; color: #7dd3fc; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .tfz-stat .ts-val { font-size: 22px; font-weight: 800; font-family: 'DM Mono', monospace; color: var(--accent-gold); line-height: 1; }
+  .tfz-stat .ts-sub { font-size: 10px; color: #93c5fd; margin-top: 4px; }
+  .tfz-stat .ts-green { color: #4ade80; font-size: 28px; font-weight: 900; }
+  .tfz-stat .ts-small { font-size: 11px; color: #bfdbfe; margin-top: 3px; }
+
+  /* target boxes */
+  .tfz-target-wrap { display: flex; gap: 8px; justify-content: center; }
+  .tfz-target-box { background: rgba(255,255,255,0.08); border-radius: 8px; padding: 6px 12px; text-align: center; }
+  .tfz-target-box .tb-cls { font-size: 10px; color: #7dd3fc; font-weight: 700; }
+  .tfz-target-box .tb-pct { font-size: 20px; font-weight: 900; color: #4ade80; font-family: 'DM Mono', monospace; }
+
+  /* dark card */
+  .dark-card { background: #0f2744; border: 1px solid #1e4a7a; border-radius: 14px; padding: 16px; color: #fff; overflow: visible; }
+  .dark-card-title { font-size: 12px; font-weight: 700; color: #7dd3fc; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+
+  /* middle grid */
+  .tfz-mid { display: grid; grid-template-columns: 1.1fr 1fr 1fr 1fr; gap: 14px; margin-bottom: 18px; overflow: visible; align-items: start; }
+
+  /* bar chart dark */
+  .dark-bar-chart { display: flex; flex-direction: column; align-items: center; overflow: visible; }
+  .dark-bars { display: flex; align-items: flex-end; gap: 30px; height: 140px; margin-bottom: 8px; overflow: visible; position: relative; }
+  .dark-bar-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .dark-bar-rect { width: 52px; border-radius: 6px 6px 0 0; cursor: pointer; transition: filter 0.15s; }
+  .dark-bar-rect:hover { filter: brightness(1.2); }
+  .dark-bar-val { font-size: 13px; font-weight: 800; color: #fff; font-family: 'DM Mono', monospace; }
+  .dark-bar-lbl { font-size: 11px; color: #7dd3fc; font-weight: 700; }
+
+  /* donut */
+  .donut-wrap { display: flex; align-items: center; justify-content: center; flex-direction: column; }
+  .donut-legend { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+  .donut-legend-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #bfdbfe; }
+  .donut-legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  /* detail kelas */
+  .detail-cls-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .detail-cls-icon { width: 36px; height: 36px; background: rgba(255,255,255,0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .detail-cls-info { }
+  .detail-cls-info .dcls { font-size: 20px; font-weight: 800; color: var(--accent-gold); font-family: 'DM Mono', monospace; line-height: 1; }
+  .detail-cls-info .dcls-lbl { font-size: 10px; color: #7dd3fc; }
+  .detail-cls-total { margin-bottom: 10px; }
+  .detail-cls-total .dt-val { font-size: 18px; font-weight: 800; color: #fff; font-family: 'DM Mono', monospace; }
+  .detail-cls-total .dt-lbl { font-size: 10px; color: #7dd3fc; }
+  .top5-list { display: flex; flex-direction: column; gap: 5px; }
+  .top5-item { display: flex; align-items: center; gap: 7px; }
+  .top5-rank { width: 18px; height: 18px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; flex-shrink: 0; }
+  .top5-rank.r1 { background: #f59e0b; color: #fff; }
+  .top5-rank.r2 { background: #6366f1; color: #fff; }
+  .top5-rank.r3 { background: #6366f1; color: #fff; }
+  .top5-rank.rn { background: rgba(255,255,255,0.1); color: #93c5fd; }
+  .top5-name { font-size: 11px; color: #e2e8f0; font-weight: 600; flex: 1; }
+  .top5-val { font-size: 11px; color: var(--accent-gold); font-weight: 700; font-family: 'DM Mono', monospace; }
+
+  /* best santri */
+  .best-list { display: flex; flex-direction: column; gap: 8px; }
+  .best-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; background: rgba(255,255,255,0.05); cursor: default; transition: background 0.15s; }
+  .best-item:hover { background: rgba(255,255,255,0.1); }
+  .best-medal { font-size: 18px; flex-shrink: 0; }
+  .best-rank-num { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0; }
+  .best-rank-num.r1 { background: #f59e0b; color: #fff; }
+  .best-rank-num.r2 { background: #94a3b8; color: #fff; }
+  .best-rank-num.r3 { background: #b45309; color: #fff; }
+  .best-rank-num.rn { background: rgba(255,255,255,0.1); color: #93c5fd; }
+  .best-info { flex: 1; }
+  .best-name { font-size: 12px; color: #f1f5f9; font-weight: 700; }
+  .best-val { font-size: 13px; font-weight: 800; color: var(--accent-gold); font-family: 'DM Mono', monospace; }
+
+  /* tables row */
+  .tfz-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .tfz-table-wrap { background: #0f2744; border: 1px solid #1e4a7a; border-radius: 14px; overflow: hidden; }
+  .tfz-table-head { background: #1e3a5f; padding: 10px 14px; }
+  .tfz-table-head h3 { font-size: 13px; font-weight: 800; color: #fff; }
+  .tfz-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .tfz-table th { background: #1e3a5f; color: #7dd3fc; padding: 7px 10px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+  .tfz-table td { padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #e2e8f0; vertical-align: middle; }
+  .tfz-table tr:hover td { background: rgba(255,255,255,0.04); }
+  .tfz-table td:first-child { color: #7dd3fc; font-weight: 700; font-family: 'DM Mono', monospace; }
+  .tfz-table .capaian-val { color: var(--accent-gold); font-weight: 700; font-family: 'DM Mono', monospace; }
+
+  /* quote */
+  .tfz-quote { background: #0f2744; border: 1px solid #1e4a7a; border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; margin-top: 14px; }
+  .tfz-quote .q-icon { font-size: 32px; flex-shrink: 0; }
+  .tfz-quote .q-text { font-size: 13px; color: #e2e8f0; font-style: italic; line-height: 1.5; }
+  .tfz-quote .q-source { font-size: 11px; color: var(--accent-gold); font-weight: 700; margin-top: 4px; }
+
+  /* tahfidz page bg */
+  #page-tahfidz { background: #0a1628; min-height: calc(100vh - 70px); }
+  #page-tahfidz .tfz-page-title { text-align: center; padding: 20px 22px 0; }
+  #page-tahfidz .tfz-page-title h2 { font-size: 26px; font-weight: 900; color: var(--accent-gold); letter-spacing: 0.5px; }
+  #page-tahfidz .tfz-page-title p { font-size: 13px; color: #7dd3fc; margin-top: 4px; }
+  #page-tahfidz .tfz-page-title .tfz-subtitle { font-size: 12px; color: #93c5fd; font-style: italic; margin-top: 3px; }
+</style>
+</head>
+<body>
+<div class="tooltip" id="tooltip"></div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-icon">📊</div>
+    <div class="header-title">
+      <h1 id="headerTitle">Dashboard Monitoring SKL</h1>
+      <p>IDN Sentul &nbsp;·&nbsp; Tahun Ajaran 2025/2026 Semester 2 &nbsp;·&nbsp; 43 Siswa Total</p>
+    </div>
+  </div>
+  <div class="header-stats" id="headerStats">
+    <div class="stat-badge"><div class="val">50 Target</div><div class="lbl">Collection Target</div></div>
+    <div class="stat-badge positive"><div class="val">100%</div><div class="lbl">Collection Status</div></div>
+  </div>
+</div>
+
+<div class="body-wrap">
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Menu Utama</div>
+      <div class="nav-item active" onclick="switchPage('skl', this)">
+        <span class="nav-icon">📋</span> Summary SKL
+      </div>
+      <div class="nav-item" onclick="switchPage('tahfidz', this)">
+        <span class="nav-icon">📖</span> Summary Tahfidz
+      </div>
+    </div>
+  </nav>
+
+  <div class="content">
+
+    <!-- ══ PAGE SKL ══ -->
+    <div class="page active" id="page-skl">
+      <div class="main">
+        <div>
+          <p class="card-title" style="padding-left:4px;">The Overall Progress of Each Subject</p>
+          <div class="subject-row">
+            <div class="subject-card" data-tip="IT Collection: IT7(6/6)+IT8(9/9)+IT9(2/2) = 17/17 — 100% ✅">
+              <div class="subject-icon it">💻</div>
+              <div class="subject-info">
+                <h3>IT Collection</h3>
+                <div class="pct">100%</div>
+                <div class="sub-detail">17 / 17 project tercapai</div>
+                <div class="subject-bar"><div class="subject-bar-fill" style="width:100%;background:var(--accent-blue);"></div></div>
+              </div>
+            </div>
+            <div class="subject-card" data-tip="English Collection: EN7(5/5)+EN8(5/5)+EN9(5/5) = 15/15 — 100% ✅">
+              <div class="subject-icon en">📖</div>
+              <div class="subject-info">
+                <h3>English Collection</h3>
+                <div class="pct">100%</div>
+                <div class="sub-detail">15 / 15 project tercapai</div>
+                <div class="subject-bar"><div class="subject-bar-fill" style="width:100%;background:var(--green-mid);"></div></div>
+              </div>
+            </div>
+            <div class="subject-card" data-tip="Diniyah Collection: DIN7(5/5)+DIN8(8/8)+DIN9(5/5) = 18/18 — 100% ✅">
+              <div class="subject-icon din">🕌</div>
+              <div class="subject-info">
+                <h3>Diniyah Collection</h3>
+                <div class="pct">100%</div>
+                <div class="sub-detail">18 / 18 project tercapai</div>
+                <div class="subject-bar"><div class="subject-bar-fill" style="width:100%;background:var(--accent-gold);"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="card">
+              <div class="card-title">Progress for Each Class</div>
+              <div class="bar-chart" id="classChart"></div>
+              <div style="display:flex;justify-content:space-between;margin-top:7px;font-size:10px;color:var(--text-light);font-family:'DM Mono',monospace;padding:0 2px;">
+                <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+              </div>
+            </div>
+            <div>
+              <div class="total-card">
+                <h4>Total Collections</h4>
+                <div class="total-main">50 / 50</div>
+                <div class="total-sub">Semua 50 target project tercapai ✅</div>
+                <div class="total-breakdown">
+                  <div class="total-breakdown-item"><div class="tb-val" style="color:#93c5fd;">17</div><div class="tb-lbl">IT Project</div></div>
+                  <div class="total-breakdown-item"><div class="tb-val" style="color:#86efac;">15</div><div class="tb-lbl">English</div></div>
+                  <div class="total-breakdown-item"><div class="tb-val" style="color:var(--accent-gold);">18</div><div class="tb-lbl">Diniyah</div></div>
+                </div>
+              </div>
+              <div class="card section-gap" style="padding:13px;">
+                <div class="card-title" style="margin-bottom:7px;">Rincian per Kelas</div>
+                <div style="font-size:11px;color:var(--text-mid);display:flex;flex-direction:column;gap:5px;">
+                  <div>🏫 <b>7A</b> &nbsp;·&nbsp; 16 project &nbsp;<span style="color:var(--green-mid);font-weight:700;">100% ✅</span></div>
+                  <div>🏫 <b>8A</b> &nbsp;·&nbsp; 22 project &nbsp;<span style="color:var(--green-mid);font-weight:700;">100% ✅</span></div>
+                  <div>🏫 <b>9A</b> &nbsp;·&nbsp; 12 project &nbsp;<span style="color:var(--green-mid);font-weight:700;">100% ✅</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card section-gap">
+            <div class="card-title">Progress for Each Grade</div>
+            <div class="grade-row" id="gradeRow"></div>
+          </div>
+        </div>
+        <div class="right-col">
+          <div class="card">
+            <div class="card-title">🏆 Fastest Student in Project Collection</div>
+            <p style="font-size:11px;color:var(--text-light);margin-bottom:9px;">7 students with fastest target completion</p>
+            <div class="fastest-list" id="fastestList"></div>
+          </div>
+          <div class="card">
+            <div class="card-title" style="color:var(--green-dark);">✅ Students Who Missed the Target</div>
+            <p style="font-size:11px;color:var(--text-light);margin-bottom:9px;">Students with SKL less than 90%</p>
+            <div style="background:#f0fff4;border-radius:10px;padding:13px;text-align:center;">
+              <div style="font-size:22px;margin-bottom:4px;">🎉</div>
+              <div style="font-size:13px;font-weight:700;color:var(--green-dark);">Tidak ada siswa yang tertinggal!</div>
+              <div style="font-size:11px;color:var(--text-light);margin-top:3px;">Semua 43 siswa mencapai target SKL ≥ 90%</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">📈 Highest Achievement for Each Material</div>
+            <p style="font-size:11px;color:var(--text-light);margin-bottom:11px;">Capaian project per mapel per kelas (100% semua)</p>
+            <div class="material-list" id="materialList"></div>
+            <div class="legend" style="margin-top:9px;">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--accent-blue);"></div> I : IT</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--accent-gold);"></div> D : Diniyah</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--green-mid);"></div> E : English</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE TAHFIDZ ══ -->
+    <div class="page" id="page-tahfidz">
+      <div class="tfz-page-title">
+        <h2>DASHBOARD PENCAPAIAN TAHFIDZ SANTRI IDN SENTUL</h2>
+        <p>SEMESTER GENAP 2025/2026</p>
+        <p class="tfz-subtitle">"Membangun Generasi Qurani Berbasis Teknologi"</p>
+      </div>
+
+      <div class="tfz-page">
+        <!-- STAT ROW -->
+        <div class="tfz-stat-row">
+          <!-- Target Semester -->
+          <div class="tfz-stat">
+            <div class="ts-label">Target Semester Genap</div>
+            <div class="tfz-target-wrap">
+              <div class="tfz-target-box"><div class="tb-cls">KELAS 7</div><div class="tb-pct">100%</div></div>
+              <div class="tfz-target-box"><div class="tb-cls">KELAS 8</div><div class="tb-pct">100%</div></div>
+            </div>
+          </div>
+          <!-- Total Santri -->
+          <div class="tfz-stat">
+            <div class="ts-label">Total Santri</div>
+            <div class="ts-val">33</div>
+            <div class="ts-sub">KELAS 7 : 18 SANTRI</div>
+            <div class="ts-sub">KELAS 8 : 15 SANTRI</div>
+          </div>
+          <!-- Total Penambahan Hafalan -->
+          <div class="tfz-stat">
+            <div class="ts-label">Total Penambahan Hafalan</div>
+            <div class="ts-val">±62</div>
+            <div class="ts-sub">JUZ 163 HALAMAN</div>
+            <div class="ts-sub">10 BARIS</div>
+          </div>
+          <!-- Capaian Tertinggi -->
+          <div class="tfz-stat">
+            <div class="ts-label">Capaian Tertinggi</div>
+            <div style="font-size:13px;color:#fbbf24;font-weight:800;margin:4px 0;">🏆 M. JA'FAR ALY</div>
+            <div class="ts-val">6 <span style="font-size:14px;">JUZ</span></div>
+          </div>
+          <!-- Rata-rata -->
+          <div class="tfz-stat">
+            <div class="ts-label">Rata-rata Capaian</div>
+            <div class="ts-val">±1,9</div>
+            <div class="ts-sub">JUZ PER SANTRI</div>
+          </div>
+        </div>
+
+        <!-- MIDDLE: Bar chart + Donut + Detail 7 + Detail 8 -->
+        <div class="tfz-mid">
+          <!-- Bar Chart Perbandingan -->
+          <div class="dark-card">
+            <div class="dark-card-title">Perbandingan Total Hafalan Per Kelas</div>
+            <div class="dark-bar-chart">
+              <div class="dark-bars" style="height:110px; padding-top:24px; align-items:flex-end; overflow:visible;">
+                <div class="dark-bar-col">
+                  <div class="dark-bar-val">18,40</div>
+                  <div class="dark-bar-rect" style="height:42px; background:#22c55e;" data-tip="Kelas 7: 18,40 Juz total hafalan"></div>
+                  <div class="dark-bar-lbl">KELAS 7</div>
+                </div>
+                <div class="dark-bar-col">
+                  <div class="dark-bar-val">45,40</div>
+                  <div class="dark-bar-rect" style="height:90px; background:#3b82f6;" data-tip="Kelas 8: 45,40 Juz total hafalan"></div>
+                  <div class="dark-bar-lbl">KELAS 8</div>
+                </div>
+              </div>
+            </div>
+            <!-- Donut -->
+            <div class="dark-card-title" style="margin-top:10px;">Kontribusi Hafalan</div>
+            <div class="donut-wrap">
+              <svg width="110" height="110" viewBox="0 0 110 110">
+                <circle cx="55" cy="55" r="40" fill="none" stroke="#1e3a5f" stroke-width="18"/>
+                <!-- 71% blue = 251.3deg, 29% green -->
+                <circle cx="55" cy="55" r="40" fill="none" stroke="#3b82f6" stroke-width="18"
+                  stroke-dasharray="178 251" stroke-dashoffset="63" stroke-linecap="butt" transform="rotate(-90 55 55)"/>
+                <circle cx="55" cy="55" r="40" fill="none" stroke="#22c55e" stroke-width="18"
+                  stroke-dasharray="73 251" stroke-dashoffset="-178" stroke-linecap="butt" transform="rotate(-90 55 55)"/>
+                <text x="55" y="58" text-anchor="middle" font-size="13" font-weight="800" fill="#fff" font-family="'DM Mono',monospace">100%</text>
+              </svg>
+              <div class="donut-legend">
+                <div class="donut-legend-item"><div class="donut-legend-dot" style="background:#22c55e;"></div> KELAS 7 (29%)</div>
+                <div class="donut-legend-item"><div class="donut-legend-dot" style="background:#3b82f6;"></div> KELAS 8 (71%)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detail Kelas 7 -->
+          <div class="dark-card">
+            <div class="dark-card-title">Detail Kelas 7</div>
+            <div class="detail-cls-header">
+              <div class="detail-cls-icon">👥</div>
+              <div class="detail-cls-info">
+                <div class="dcls">18</div>
+                <div class="dcls-lbl">SANTRI</div>
+              </div>
+            </div>
+            <div class="detail-cls-total">
+              <div style="font-size:10px;color:#7dd3fc;font-weight:700;">TOTAL HAFALAN</div>
+              <div class="dt-val">18 JUZ</div>
+              <div style="font-size:10px;color:#7dd3fc;">121 HALAMAN</div>
+            </div>
+            <div style="font-size:10px;color:#7dd3fc;font-weight:700;margin-bottom:6px;">TOP 5 KELAS 7</div>
+            <div class="top5-list">
+              <div class="top5-item"><div class="top5-rank r1">1</div><span class="top5-name">Ahmad Bilal</span><span class="top5-val">2 Juz</span></div>
+              <div class="top5-item"><div class="top5-rank r2">2</div><span class="top5-name">Elmirza Ananda</span><span class="top5-val">1 Juz 8 Hal</span></div>
+              <div class="top5-item"><div class="top5-rank r2">3</div><span class="top5-name">Achsan Sulthony</span><span class="top5-val">1 Juz 6 Hal</span></div>
+              <div class="top5-item"><div class="top5-rank rn">4</div><span class="top5-name">Abdurrahman</span><span class="top5-val">1 Juz 4 Hal</span></div>
+              <div class="top5-item"><div class="top5-rank rn">5</div><span class="top5-name">Muhammad Farid</span><span class="top5-val">1 Juz 3 Hal</span></div>
+            </div>
+          </div>
+
+          <!-- Detail Kelas 8 -->
+          <div class="dark-card">
+            <div class="dark-card-title">Detail Kelas 8</div>
+            <div class="detail-cls-header">
+              <div class="detail-cls-icon">👥</div>
+              <div class="detail-cls-info">
+                <div class="dcls">15</div>
+                <div class="dcls-lbl">SANTRI</div>
+              </div>
+            </div>
+            <div class="detail-cls-total">
+              <div style="font-size:10px;color:#7dd3fc;font-weight:700;">TOTAL HAFALAN</div>
+              <div class="dt-val">44 JUZ</div>
+              <div style="font-size:10px;color:#7dd3fc;">42 HALAMAN 10 BARIS</div>
+            </div>
+            <div style="font-size:10px;color:#7dd3fc;font-weight:700;margin-bottom:6px;">TOP 5 KELAS 8</div>
+            <div class="top5-list">
+              <div class="top5-item"><div class="top5-rank r1">1</div><span class="top5-name">M. Ja'far Aly</span><span class="top5-val">6 Juz</span></div>
+              <div class="top5-item"><div class="top5-rank r2">2</div><span class="top5-name">Haikal Afham Permana</span><span class="top5-val">3 Juz</span></div>
+              <div class="top5-item"><div class="top5-rank r2">3</div><span class="top5-name">Muadz Abdul Malik</span><span class="top5-val">3 Juz</span></div>
+              <div class="top5-item"><div class="top5-rank rn">4</div><span class="top5-name">Arkan Azka</span><span class="top5-val">2 Juz 14 Hal</span></div>
+              <div class="top5-item"><div class="top5-rank rn">5</div><span class="top5-name">Amri Yusron Salim</span><span class="top5-val">2 Juz 11 Hal</span></div>
+            </div>
+          </div>
+
+          <!-- Santri Terbaik -->
+          <div class="dark-card">
+            <div class="dark-card-title">🏆 Santri Terbaik Semester Ini</div>
+            <div class="best-list">
+              <div class="best-item" data-tip="Rank #1 — M. Ja'far Aly · 6 Juz">
+                <div class="best-rank-num r1">1</div>
+                <div class="best-info"><div class="best-name">M. Ja'far Aly</div><div style="font-size:10px;color:#7dd3fc;">Kelas 8</div></div>
+                <div class="best-val">6 Juz</div>
+              </div>
+              <div class="best-item" data-tip="Rank #2 — Haikal Afham Permana · 3 Juz">
+                <div class="best-rank-num r2">2</div>
+                <div class="best-info"><div class="best-name">Haikal Afham Permana</div><div style="font-size:10px;color:#7dd3fc;">Kelas 8</div></div>
+                <div class="best-val">3 Juz</div>
+              </div>
+              <div class="best-item" data-tip="Rank #3 — Muadz Abdul Malik · 3 Juz">
+                <div class="best-rank-num r3">3</div>
+                <div class="best-info"><div class="best-name">Muadz Abdul Malik</div><div style="font-size:10px;color:#7dd3fc;">Kelas 8</div></div>
+                <div class="best-val">3 Juz</div>
+              </div>
+              <div class="best-item" data-tip="Rank #4 — Arkan Azka · 2 Juz 14 Halaman">
+                <div class="best-rank-num rn">4</div>
+                <div class="best-info"><div class="best-name">Arkan Azka</div><div style="font-size:10px;color:#7dd3fc;">Kelas 8</div></div>
+                <div class="best-val">2J 14H</div>
+              </div>
+              <div class="best-item" data-tip="Rank #5 — Amri Yusron Salim · 2 Juz 11 Halaman">
+                <div class="best-rank-num rn">5</div>
+                <div class="best-info"><div class="best-name">Amri Yusron Salim</div><div style="font-size:10px;color:#7dd3fc;">Kelas 8</div></div>
+                <div class="best-val">2J 11H</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TABLES -->
+        <div class="tfz-tables">
+          <!-- Kelas 7 -->
+          <div class="tfz-table-wrap">
+            <div class="tfz-table-head"><h3>Daftar Capaian Santri Kelas 7</h3></div>
+            <table class="tfz-table">
+              <thead><tr><th>No</th><th>Nama Santri</th><th>Capaian</th><th>No</th><th>Nama Santri</th><th>Capaian</th></tr></thead>
+              <tbody>
+                <tr><td>1</td><td>Ahmad Bilal</td><td class="capaian-val">2 Juz</td><td>10</td><td>Mirza Athaya</td><td class="capaian-val">1 Juz</td></tr>
+                <tr><td>2</td><td>Elmirza Ananda</td><td class="capaian-val">1 Juz 8 Hal</td><td>11</td><td>Al Rais</td><td class="capaian-val">15 Halaman</td></tr>
+                <tr><td>3</td><td>Achsan Sulthony</td><td class="capaian-val">1 Juz 6 Hal</td><td>12</td><td>Keanu Iffat</td><td class="capaian-val">14 Halaman</td></tr>
+                <tr><td>4</td><td>Abdurrahman</td><td class="capaian-val">1 Juz 4 Hal</td><td>13</td><td>Khaleef Hisyam</td><td class="capaian-val">13 Halaman</td></tr>
+                <tr><td>5</td><td>Muhammad Farid</td><td class="capaian-val">1 Juz 3 Hal</td><td>14</td><td>Fezza Nurbasit</td><td class="capaian-val">11 Halaman</td></tr>
+                <tr><td>6</td><td>Bintang Ahsan</td><td class="capaian-val">1 Juz 2 Hal</td><td>15</td><td>Axcell Raziq</td><td class="capaian-val">11 Halaman</td></tr>
+                <tr><td>7</td><td>Ahsani Taqwim</td><td class="capaian-val">1 Juz 2 Hal</td><td>16</td><td>Nadhif Adhyastha</td><td class="capaian-val">11 Halaman</td></tr>
+                <tr><td>8</td><td>Abiyya Nabil</td><td class="capaian-val">1 Juz</td><td>17</td><td>Ariz Kayne</td><td class="capaian-val">11 Halaman</td></tr>
+                <tr><td>9</td><td>Muhammad Reza</td><td class="capaian-val">1 Juz</td><td>18</td><td>Afnan Atma</td><td class="capaian-val">10 Halaman</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Kelas 8 -->
+          <div class="tfz-table-wrap">
+            <div class="tfz-table-head"><h3>Daftar Capaian Santri Kelas 8</h3></div>
+            <table class="tfz-table">
+              <thead><tr><th>No</th><th>Nama Santri</th><th>Capaian</th><th>No</th><th>Nama Santri</th><th>Capaian</th></tr></thead>
+              <tbody>
+                <tr><td>1</td><td>Amri Yusron Salim</td><td class="capaian-val">2 Juz 11 Hal</td><td>9</td><td>Mikail Rasyid Riandy</td><td class="capaian-val">1 Juz 11 Hal 10 Brs</td></tr>
+                <tr><td>2</td><td>Arkan Azka</td><td class="capaian-val">2 Juz 14 Hal</td><td>10</td><td>Muadz Abdul Malik</td><td class="capaian-val">3 Juz</td></tr>
+                <tr><td>3</td><td>Bari Alzahran</td><td class="capaian-val">2 Juz</td><td>11</td><td>Nino Haikal Fallah</td><td class="capaian-val">1 Juz 10 Hal</td></tr>
+                <tr><td>4</td><td>Fahman Ibadurrahman</td><td class="capaian-val">2 Juz 4 Hal</td><td>12</td><td>Razka Aufa Garot</td><td class="capaian-val">2 Juz 8 Hal</td></tr>
+                <tr><td>5</td><td>FIKRY AKBAR</td><td class="capaian-val">1 Juz 9 Hal</td><td>13</td><td>Rifqi Arya Nadindra</td><td class="capaian-val">2 Juz</td></tr>
+                <tr><td>6</td><td>Haikal Afham Permana</td><td class="capaian-val">3 Juz</td><td>14</td><td>Rizki Agiliano Ramadhan</td><td class="capaian-val">1 Juz 12 Hal</td></tr>
+                <tr><td>7</td><td>M Ja'far Aly</td><td class="capaian-val">6 Juz</td><td>15</td><td>Daniyal Aqila Natamihardja</td><td class="capaian-val">1 Juz 13 Hal</td></tr>
+                <tr><td>8</td><td>M. Salman Rasyad</td><td class="capaian-val">2 Juz</td><td></td><td></td><td></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- QUOTE -->
+        <div class="tfz-quote">
+          <div class="q-icon">📖</div>
+          <div>
+            <div class="q-text">"Sebaik-baik kalian adalah yang mempelajari Al-Qur'an dan mengajarkannya."</div>
+            <div class="q-source">(HR. BUKHARI)</div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- end page-tahfidz -->
+
+  </div><!-- end content -->
+</div><!-- end body-wrap -->
+
+<script>
+const tip = document.getElementById('tooltip');
+function showTip(e, text) { tip.textContent = text; tip.classList.add('visible'); moveTip(e); }
+function moveTip(e) { tip.style.left=(e.clientX-tip.offsetWidth/2)+'px'; tip.style.top=(e.clientY-tip.offsetHeight-12)+'px'; }
+function hideTip() { tip.classList.remove('visible'); }
+function attachTip(el) {
+  el.addEventListener('mouseenter', e => showTip(e, el.dataset.tip));
+  el.addEventListener('mousemove', moveTip);
+  el.addEventListener('mouseleave', hideTip);
+}
+document.querySelectorAll('[data-tip]').forEach(attachTip);
+
+function switchPage(page, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  el.classList.add('active');
+  const titles = { skl:'Dashboard Monitoring SKL', tahfidz:'Dashboard Pencapaian Tahfidz' };
+  document.getElementById('headerTitle').textContent = titles[page];
+}
+
+// SKL DATA
+const gradeData = [
+  { grade:'7th', cls:'7A', siswa:18, IT:{done:6,target:6}, Din:{done:5,target:5}, En:{done:5,target:5} },
+  { grade:'8th', cls:'8A', siswa:15, IT:{done:9,target:9}, Din:{done:8,target:8}, En:{done:5,target:5} },
+  { grade:'9th', cls:'9A', siswa:10, IT:{done:2,target:2}, Din:{done:5,target:5}, En:{done:5,target:5} },
+];
+const classChart = document.getElementById('classChart');
+gradeData.forEach(g => {
+  const total = g.IT.target+g.Din.target+g.En.target;
+  const row = document.createElement('div'); row.className='bar-row';
+  row.innerHTML=`<div class="bar-label">${g.cls}</div><div class="bar-track" data-tip="Kelas ${g.cls} (${g.siswa} siswa): ${total} project — 100% ✅"><div class="bar-fill" style="width:100%"><span>100%</span></div></div>`;
+  classChart.appendChild(row); attachTip(row.querySelector('.bar-track'));
+});
+const gradeRow = document.getElementById('gradeRow');
+gradeData.forEach(g => {
+  const subjects = [
+    {name:'IT',cls:'it',data:g.IT,color:'var(--accent-blue)',vcolor:'#457b9d'},
+    {name:'English',cls:'en',data:g.En,color:'var(--green-mid)',vcolor:'#52b788'},
+    {name:'Diniyah',cls:'din',data:g.Din,color:'var(--accent-gold)',vcolor:'#e9c46a'},
+  ];
+  const maxP = Math.max(g.IT.target,g.En.target,g.Din.target);
+  const totalProj = g.IT.target+g.Din.target+g.En.target;
+  const card = document.createElement('div'); card.className='grade-card';
+  let subHtml = subjects.map(s=>`
+    <div class="grade-subject"><span class="sname">${s.name}</span><span class="sproj">${s.data.done}/${s.data.target} proj</span><span class="spct ${s.cls}">100%</span></div>
+    <div class="mini-bar" data-tip="${g.grade} Grade ${s.name}: ${s.data.done}/${s.data.target} project — 100% ✅"><div class="mini-bar-fill" style="width:100%;background:${s.color};"></div></div>`).join('');
+  let barsHtml = subjects.map(s=>{
+    const h=Math.round((s.data.target/maxP)*48)+6;
+    return `<div class="mini-bar-v" style="height:${h}px;background:${s.vcolor};" data-tip="${s.name} ${g.cls}: ${s.data.done}/${s.data.target} project — 100%"></div>`;
+  }).join('');
+  card.innerHTML=`<h4>${g.grade} Grade (${g.cls})</h4><p class="grade-meta">${g.siswa} siswa &nbsp;·&nbsp; ${totalProj} jenis project &nbsp;·&nbsp; <b style="color:var(--green-mid)">100% ✅</b></p>${subHtml}<div class="mini-chart"><div class="mini-chart-bars">${barsHtml}</div><div class="mini-chart-labels"><span>IT</span><span>EN</span><span>DIN</span></div></div>`;
+  gradeRow.appendChild(card); card.querySelectorAll('[data-tip]').forEach(attachTip);
+});
+const students = [
+  {name:'Bilal Muhyiddin Rabbani Candra',cls:'9A'},{name:'Dzakiy Mahfudz',cls:'9A'},
+  {name:'Muhammad Rizky Adiha',cls:'9A'},{name:'Daniyal Aqila Natamihardja',cls:'8A'},
+  {name:'Ahmad Bilal Alfatih',cls:'7A'},{name:'Haikal Afham Permana',cls:'8A'},
+  {name:'Khaleef Hisyam Nugroho',cls:'7A'},
+];
+const fl = document.getElementById('fastestList');
+students.forEach((s,i)=>{
+  const item=document.createElement('div'); item.className='fastest-item';
+  item.dataset.tip=`${s.name} (${s.cls}) — Rank #${i+1} · Semua project selesai 100%`;
+  item.innerHTML=`<div class="fastest-rank ${i<3?'top':''}">${i+1}</div><div class="fastest-info"><div class="fastest-name">${s.name}</div><div class="fastest-bar"><div class="fastest-bar-fill" style="width:100%;"></div></div></div><div style="text-align:right;flex-shrink:0;"><div class="fastest-class">${s.cls}</div><div class="fastest-pct">100%</div></div>`;
+  fl.appendChild(item); attachTip(item);
+});
+const materials=[
+  {label:'IT9',type:'it',proj:2,target:2,color:'var(--accent-blue)',rank:1},
+  {label:'DIN8',type:'din',proj:8,target:8,color:'var(--accent-gold)',rank:2},
+  {label:'IT7',type:'it',proj:6,target:6,color:'var(--accent-blue)',rank:3},
+  {label:'EN8',type:'en',proj:5,target:5,color:'var(--green-mid)',rank:4},
+  {label:'DIN7',type:'din',proj:5,target:5,color:'var(--accent-gold)',rank:5},
+  {label:'EN9',type:'en',proj:5,target:5,color:'var(--green-mid)',rank:6},
+  {label:'DIN9',type:'din',proj:5,target:5,color:'var(--accent-gold)',rank:7},
+  {label:'EN7',type:'en',proj:5,target:5,color:'var(--green-mid)',rank:8},
+  {label:'IT8',type:'it',proj:9,target:9,color:'var(--accent-blue)',rank:9},
+];
+const totalRanks=materials.length;
+const ml=document.getElementById('materialList');
+materials.forEach(m=>{
+  const barW=Math.round(((totalRanks-m.rank+1)/totalRanks)*100);
+  const item=document.createElement('div'); item.className='mat-item';
+  item.innerHTML=`<div class="mat-label ${m.type}">${m.label}</div><div class="mat-track" data-tip="${m.label}: ${m.proj}/${m.target} project — 100% ✅ · Rank #${m.rank} tercepat"><div class="mat-fill" style="width:${barW}%;background:${m.color};"><span>100%</span></div></div>`;
+  ml.appendChild(item); attachTip(item.querySelector('.mat-track'));
+});
+</script>
+</body>
+</html>
